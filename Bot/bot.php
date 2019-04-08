@@ -122,16 +122,16 @@ case 'message_new':
 
 	}elseif ($edSem == "1"){
 		if($database->execute_query("SELECT * from cache WHERE zach = '".$row['zach']."' and semestr = '$tester'")['stID']!=false){
-		$vk->messageFromGroup( "Ваш новый семестр сохранен.\nНапиши РБ, чтобы посмотреть свои баллы");
-		$database->savePlace("semEdit","0");
-		$database->savePlace("semestr",$tester);
-	}else {
-		$r_count = $database->execute_query("SELECT * from cache WHERE zach = '".$row['zach']."' order by semestr asc",1);
-		while($c_semestr = mysqli_fetch_array($r_count,MYSQL_ASSOC))
-		$r_sem[]=$c_semestr['semestr'];
-		$vk->messageFromGroup( "Извини, но такого семестра нет в базе только ".implode(', ',$r_sem)." семестры");
-		$database->savePlace("semEdit","0");
-	}
+			$vk->messageFromGroup( "Ваш новый семестр сохранен.\nНапиши РБ, чтобы посмотреть свои баллы");
+			$database->savePlace("semEdit","0");
+			$database->savePlace("semestr",$tester);
+		}else {
+			$r_count = $database->execute_query("SELECT * from cache WHERE zach = '".$row['zach']."' order by semestr asc",1);
+				while($c_semestr = mysqli_fetch_array($r_count,MYSQL_ASSOC))
+				$r_sem[]=$c_semestr['semestr'];
+			$vk->messageFromGroup( "Извини, но такого семестра нет в базе только ".implode(', ',$r_sem)." семестры");
+			$database->savePlace("semEdit","0");
+		}
 	  die('ok');
 
 	}elseif ($user_zamenazach == "1" && (!ctype_digit($tester) || $tester <= 100000 || $tester >= 1000000)&&$tester!="отмена"){
@@ -284,6 +284,21 @@ case 'message_new':
 			$database->updatePlace("spam_id", "5");
 				die('ok');
 			}
+		}elseif(preg_match("/семестр\s(\d+)/",$textrass)){
+			$semestr = preg_replace("/семестр\s(\d+)$/","$1",$textrass);
+			
+			if($database->execute_query("SELECT * from cache WHERE zach = '".$row['zach']."' and semestr = '$semestr'")['stID']!=false){
+				$vk->messageFromGroup( "Ваш новый семестр сохранен.\nНапиши РБ, чтобы посмотреть свои баллы");
+				$database->savePlace("semEdit","0");
+				$database->savePlace("semestr",$semestr);
+			}else {
+				$r_count = $database->execute_query("SELECT * from cache WHERE zach = '".$row['zach']."' order by semestr asc",1);
+					while($c_semestr = mysqli_fetch_array($r_count,MYSQL_ASSOC))
+					$r_sem[]=$c_semestr['semestr'];
+				$vk->messageFromGroup( "Извини, но такого семестра нет в базе только ".implode(', ',$r_sem)." семестры");
+				$database->savePlace("semEdit","0"); 
+			}
+		
 		}elseif($row['helper']=="1"){
 			$vk->messageFromGroup( "Такой команды не существует $plohSmile\nДоступные команды:\nРейтинг - просмотр рейтинга.\nСброс - cброс всех настроек.\nИзменить зачётку - изменение зачётной книжки.\nОтказ от уведомлений - Отказ от всех уведомлений о новых баллах\nПодписаться на уведомления - подписаться на уведомления группы о новых баллах\nИзменить семестр - позволяет изменить семестр\nВыключить справку - выключает ответ на каждое нешаблонное слово справкой.\nВключить справку - отменяет предыдущую команду.\nПоказывать позицию - показывать в рейтинге вашу текущую позицию,если она ниже 20 места.\nНе показывать позицию - не показывать в рейтинге вашу текущую позицию.");
 		}

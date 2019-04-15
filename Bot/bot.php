@@ -25,19 +25,6 @@ case 'confirmation':
 
 
 case 'message_new':
-
-    /*if($active=="chat_invite_user_by_link"||$active=="chat_invite_user"){
-		   $uss = $data->object->action->member_id;
-		    $get_info_user = api_vk("users.get", array("user_ids"=>$uss))['response'][0];
-	    $vk->messageFromGroup( "Привет, ".$get_info_user['first_name']." $smile\nРады видеть тебя в нашей уютной беседке.\nДля обращения к боту, просто напиши слово из списка его команд.\nДля просмотра команд, напиши: Справка");
-		}
-
-		if($active == "chat_kick_user"){
-		     $uss = $data->object->action->member_id;
-		    $get_info_user = api_vk("users.get", array("user_ids"=>$uss))['response'][0];
-	    $vk->messageFromGroup( "Пока, ".$get_info_user['first_name']."$plohSmile");
-		}*/
-
     /*-----------ЗАПИСЫВАЕМ ВХОДНЫЕ ДАННЫЕ-----------*/
 	$chat=$data->object->peer_id;
 	$active = $data->object->action->type;
@@ -45,6 +32,11 @@ case 'message_new':
 	$group = $data->group_id;
 	$id_mes= $data->object->id;
 	$ata = $data->object->attachments;
+	if($ata){
+		    $attachments = parse_attachments($ata);
+	}else{
+	    $attachments = "";
+	}
 	$textrass = $data->object->text;
 	$publish_date = $data->object->date;
 	$vk->putChatUser($data->object->peer_id, $data->object->from_id);
@@ -53,16 +45,11 @@ case 'message_new':
 	$vk->keyboard_m($key_B);
 	$querydd = "SELECT vm_d.sum_ball, vm_d.numb, users.*, cache.data, cache.change_time, cache.plan, ( SELECT COUNT(zach) FROM cache WHERE plan = @plan AND groups = @groups AND semestr = @semestr ) AS COUNT, ( SELECT sum_ball FROM cache WHERE plan = @plan AND semestr = @semestr AND sum_ball > vm_d.sum_ball AND groups = vm_d.groups ORDER BY sum_ball ASC LIMIT 1 ) - vm_d.sum_ball AS difference FROM ( SELECT t.zach, t.semestr, t.sum_ball, t.`groups`, @row_n := @row_n + 1 AS numb FROM cache t, ( SELECT @row_n := 0, @id := '$sigen', @zach :=( SELECT zach FROM users WHERE id = @id ), @groups :=( SELECT `group` FROM users WHERE zach = @zach and id= @id ), @semestr :=( SELECT semestr FROM users WHERE id = @id ), @plan :=( SELECT plan FROM cache WHERE zach = @zach limit 1 ) ) r WHERE plan = @plan AND semestr = @semestr AND groups = @groups ORDER BY `t`.`sum_ball` DESC ) vm_d INNER JOIN users ON users.zach = vm_d.zach INNER JOIN cache ON cache.zach = vm_d.zach WHERE vm_d.zach = @zach AND users.id = @id AND cache.semestr = @semestr";
 	$row = $database->execute_query($querydd);
-
     if($row["position"]==false){
         $query = "INSERT INTO `users` (`id`,`position`) VALUES ('$sigen','0')";
         $resulter = $database->execute_query($query);
     }
-		if($data->object->attachments){
-		    $attachments = parse_attachments($data->object->attachments);
-	}else{
-	    $attachments = "";
-	}
+	
 		$tester = $spam_m = $vk->chat_text = $data->object->text;
 		$tester = preg_replace("/\[(.*)\]\s/","",mb_strtolower($tester));
 		$tester = preg_replace("/ё/","е",$tester);
@@ -97,6 +84,15 @@ case 'message_new':
 	$edSem = $row["semEdit"];
 	$ids = $row["ids"];
 	$key_settings = $row["keyboard"];
+	if(preg_match("/\d{6}/imu",$tester) && $database->execute_query("SELECT plan, semestr, groups FROM cache WHERE zach = '$tester'")['plan']!=""){
+		$zach = $tester;
+		$row = $database->execute_query("SELECT plan, semestr, groups FROM cache WHERE zach = '$zach'");
+		$vk->messageFromGroup( "По вашим данным найден студент из группы ".$row['groups']."\nДля просмотра своих баллов, напишите:\nРейтинг");
+		$database->savePlace("user_zamena_zach", "0");
+		$database->savePlace("position", "5");
+		$database->savePlace("zach", "$tester");
+	die('ok');
+	}
 	/*if($sigen!=145567397&&$sigen!=276849799&&$sigen!=153673346){
 		$vk->messageFromGroup("Извините, ведутся технические работы!\nНапишите позже");
 		die('ok');
@@ -224,6 +220,7 @@ case 'message_new':
 
 			if($spam['spam_id']!=false&&$spam['whom']!=false){
 				$database->updatePlace("spam_text", $spam_m, 1);
+				$database->updatePlace("attachment", $attachments, 1);
 				system("php spam.php > /dev/null&");
 				$vk->messageFromGroup("Рассылка запущена по группе или институту");
 				die('ok');
@@ -234,6 +231,7 @@ case 'message_new':
 				die('ok');
 			}elseif($spam['spam_id']!=false){
 				$database->updatePlace("spam_text", $spam_m, 1);
+				$database->updatePlace("attachment", $attachments, 1);
 				system("php spam.php > /dev/null&");
 				$vk->messageFromGroup("Рассылка запущена по всем");
 				die('ok');
@@ -284,9 +282,9 @@ case 'message_new':
 			$database->updatePlace("spam_id", "5");
 				die('ok');
 			}
-		}elseif(preg_match("/семестр\s(\d+)/",$textrass)){
-			$semestr = preg_replace("/семестр\s(\d+)$/","$1",$textrass);
-			
+		}elseif(preg_match("/семестр\s(\d+)/imu",$textrass)){
+			$semestr = preg_replace("/семестр\s(\d+)/imu","$1",$textrass);
+
 			if($database->execute_query("SELECT * from cache WHERE zach = '".$row['zach']."' and semestr = '$semestr'")['stID']!=false){
 				$vk->messageFromGroup( "Ваш новый семестр сохранен.\nНапиши РБ, чтобы посмотреть свои баллы");
 				$database->savePlace("semEdit","0");
@@ -296,9 +294,9 @@ case 'message_new':
 					while($c_semestr = mysqli_fetch_array($r_count,MYSQL_ASSOC))
 					$r_sem[]=$c_semestr['semestr'];
 				$vk->messageFromGroup( "Извини, но такого семестра нет в базе только ".implode(', ',$r_sem)." семестры");
-				$database->savePlace("semEdit","0"); 
+				$database->savePlace("semEdit","0");
 			}
-		
+
 		}elseif($row['helper']=="1"){
 			$vk->messageFromGroup( "Такой команды не существует $plohSmile\nДоступные команды:\nРейтинг - просмотр рейтинга.\nСброс - cброс всех настроек.\nИзменить зачётку - изменение зачётной книжки.\nОтказ от уведомлений - Отказ от всех уведомлений о новых баллах\nПодписаться на уведомления - подписаться на уведомления группы о новых баллах\nИзменить семестр - позволяет изменить семестр\nВыключить справку - выключает ответ на каждое нешаблонное слово справкой.\nВключить справку - отменяет предыдущую команду.\nПоказывать позицию - показывать в рейтинге вашу текущую позицию,если она ниже 20 места.\nНе показывать позицию - не показывать в рейтинге вашу текущую позицию.");
 		}
@@ -329,8 +327,17 @@ case 'message_new':
 	echo ('ok');
 	break;
 
+	case 'vkpay_transaction':
+	$from_to = $data->object->from_id;
+	$textrass = $data->object->text;
+	$sigen = $data->object->peer_id;
+	$publish_date = $data->object->date;
+	$vk->putChatUser($sigen, $sigen);
+	$vk->messageFromGroup( print_r($data->object,true));
+	break;
 	case 'message_reply':
 	$from_to = $data->object->from_id;
+	$textrass = $data->object->text;
 	$sigen = $data->object->peer_id;
 	$publish_date = $data->object->date;
 	$vk->putChatUser($sigen, $sigen);
@@ -374,6 +381,30 @@ case 'message_new':
 	$ids = $row["ids"];
 	$key_settings = $row["keyboard"];
 	$vk->key_settings = $key_settings;
+	if(preg_match("/\d{6}/imu",$tester) && $database->execute_query("SELECT plan, semestr, groups FROM cache WHERE zach = '$tester'")['plan']!=""){
+		$zach = $tester;
+		$row = $database->execute_query("SELECT plan, semestr, groups FROM cache WHERE zach = '$zach'");
+		$vk->messageFromGroup( "По вашим данным найден студент из группы ".$row['groups']."\nДля просмотра своих баллов, напишите:\nРейтинг");
+		$database->savePlace("user_zamena_zach", "0");
+		$database->savePlace("position", "5");
+		$database->savePlace("zach", "$tester");
+	die('ok');
+}elseif(preg_match("/семестр\s(\d+)/imu",$textrass)){
+	$semestr = preg_replace("/семестр\s(\d+)/imu","$1",$textrass);
+
+	if($database->execute_query("SELECT * from cache WHERE zach = '".$row['zach']."' and semestr = '$semestr'")['stID']!=false){
+		$vk->messageFromGroup( "Ваш новый семестр сохранен.\nНапиши РБ, чтобы посмотреть свои баллы");
+		$database->savePlace("semEdit","0");
+		$database->savePlace("semestr",$semestr);
+	}else {
+		$r_count = $database->execute_query("SELECT * from cache WHERE zach = '".$row['zach']."' order by semestr asc",1);
+			while($c_semestr = mysqli_fetch_array($r_count,MYSQL_ASSOC))
+			$r_sem[]=$c_semestr['semestr'];
+		$vk->messageFromGroup( "Извини, но такого семестра нет в базе только ".implode(', ',$r_sem)." семестры");
+		$database->savePlace("semEdit","0");
+	}
+
+}
 	switch ($tester)
 		{
 

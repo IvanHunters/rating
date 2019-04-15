@@ -65,12 +65,18 @@ function close_keyboard(){
    $this->keyboard = '{"buttons":[],"one_time":true}';
 }
 
-function keyboard_m($arr_keyboard){
+function keyboard_m($arr_keyboard,$arr_id_buttons = false){
      $a = array();
     $a['buttons']=array();
-    foreach ($arr_keyboard as $i=>$value) {
-    $a['buttons'][$i][0]=array('action'=>array('type'=>'text','payload'=>'{"button": "1"}','label'=>$value),'color'=>'default');
-    }
+	if(!$arr_id_buttons){
+		foreach ($arr_keyboard as $i=>$value) {
+			$a['buttons'][$i][0]=array('action'=>array('type'=>'text','payload'=>'{"id_button": "'.$i.'"}','label'=>$value),'color'=>'default');
+		}
+	}else{
+		foreach ($arr_keyboard as $i=>$value) {
+			$a['buttons'][$i][0]=array('action'=>array('type'=>'text','payload'=>'{"id_button": "'.$arr_id_buttons[$i].'"}','label'=>$value),'color'=>'default');
+		}	
+	}
     $this->keyboard =json_encode($a, JSON_UNESCAPED_UNICODE);
 }
 
